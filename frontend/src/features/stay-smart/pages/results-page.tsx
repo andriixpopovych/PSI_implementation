@@ -1,8 +1,6 @@
 import { motion } from 'framer-motion';
-import { SlidersHorizontal } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 import { ResultCard, SectionHeading } from '../components/content-blocks';
 import { properties } from '../lib/mock-data';
@@ -15,12 +13,6 @@ export function ResultsPage() {
       <SectionHeading
         title="10 Results Found"
         copy="A quick list of places that match your dates and stay style."
-        action={
-          <Button variant="outline" className="rounded-[1.15rem] border-white/80 bg-white/70">
-            <SlidersHorizontal className="size-4" />
-            Filters
-          </Button>
-        }
       />
 
       <motion.section variants={itemMotion} className="flex flex-wrap gap-3">

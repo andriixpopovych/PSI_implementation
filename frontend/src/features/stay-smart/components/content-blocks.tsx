@@ -63,9 +63,7 @@ export function PropertyCard({
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      initial={false}
       whileHover={{ y: -10 }}
     >
       <Card className="h-full overflow-hidden">
@@ -114,9 +112,7 @@ export function ResultCard({
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      initial={false}
       whileHover={{ y: -8 }}
     >
       <Card className="overflow-hidden">
@@ -179,11 +175,7 @@ export function ReservationCard({
   index: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-    >
+    <motion.div initial={false}>
       <Card className="overflow-hidden rounded-[1.8rem]">
         <CardContent className="grid gap-5 p-4 lg:grid-cols-[190px_1fr_auto] lg:items-center">
           <div className="overflow-hidden rounded-[1.3rem]">

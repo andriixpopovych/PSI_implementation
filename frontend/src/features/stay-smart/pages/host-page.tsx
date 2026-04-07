@@ -31,9 +31,7 @@ export function HostPage() {
         {hostListings.map((property, index) => (
           <motion.div
             key={property.id}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06 }}
+            initial={false}
             whileHover={{ y: -8 }}
           >
             <Card className="overflow-hidden">

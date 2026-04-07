@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import { CatalogFiltersDrawer } from '../components/catalog-filters-drawer';
 import { PropertyCard, SectionHeading } from '../components/content-blocks';
 import {
   categoryFilters,
@@ -22,12 +22,7 @@ export function CatalogPage() {
       <SectionHeading
         title="Catalog"
         copy="Browse every category in one clean, photo-led feed."
-        action={
-          <Button variant="outline" className="rounded-[1.15rem] border-white/80 bg-white/70">
-            <SlidersHorizontal className="size-4" />
-            Filters
-          </Button>
-        }
+        action={<CatalogFiltersDrawer />}
       />
 
       <motion.section variants={itemMotion} className="flex flex-wrap gap-3">
