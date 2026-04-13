@@ -1,0 +1,100 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "../src/generated/prisma"
+  engineType = "client"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  GUEST
+  HOST
+  ADMIN
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  HOSTEL
+  VILLA
+  ROOM
+}
+
+enum PlacementVariantType {
+  ENTIRE_PLACE
+  PRIVATE_ROOM
+  SHARED_ROOM
+  STUDIO
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CANCELED
+  COMPLETED
+}
+
+model User {
+  id             String                @id @default(cuid())
+  email          String                @unique
+  passwordHash   String
+  fullName       String
+  role           UserRole              @default(GUEST)
+  hostedObjects  AccommodationObject[] @relation("HostedObjects")
+  reservations   Reservation[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+}
+
+model AccommodationObject {
+  id           String                 @id @default(cuid())
+  title        String
+  description  String?
+  type         PropertyType
+  city         String
+  country      String
+  address      String
+  hostId       String
+  host         User                   @relation("HostedObjects", fields: [hostId], references: [id], onDelete: Cascade)
+  variants     PlacementVariant[]
+  reservations Reservation[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+}
+
+model PlacementVariant {
+  id            String               @id @default(cuid())
+  objectId      String
+  object        AccommodationObject  @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  title         String
+  type          PlacementVariantType
+  guests        Int
+  bedrooms      Int
+  bathrooms     Int
+  pricePerNight Int
+  pricePerMonth Int?
+  isActive      Boolean              @default(true)
+  reservations  Reservation[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model Reservation {
+  id           String             @id @default(cuid())
+  userId       String
+  objectId     String
+  variantId    String?
+  startDate    DateTime
+  endDate      DateTime
+  guests       Int
+  status       ReservationStatus  @default(ACTIVE)
+  cancelReason String?
+  canceledAt   DateTime?
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  object       AccommodationObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  variant      PlacementVariant?  @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
