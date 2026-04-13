@@ -2,13 +2,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import type { SessionUser } from '../common/auth/session-user.type';
-import { serializeReservation } from '../common/serializers';
-import { ReservationStatus } from '../generated/prisma/enums';
-import { PrismaService } from '../prisma/prisma.service';
-import { CancelReservationDto } from './dto/cancel-reservation.dto';
+import type { SessionUser } from "../common/auth/session-user.type";
+import { serializeReservation } from "../common/serializers";
+import { ReservationStatus } from "../generated/prisma/enums.js";
+import { PrismaService } from "../prisma/prisma.service";
+import { CancelReservationDto } from "./dto/cancel-reservation.dto";
+import { CreateReservationDto } from "./dto/create-reservation.dto";
 
 @Injectable()
 export class ReservationsService {
@@ -16,16 +17,9 @@ export class ReservationsService {
 
   async getMine(user: SessionUser) {
     const reservations = await this.prisma.reservation.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        object: true,
-        variant: true,
-      },
-      orderBy: {
-        startDate: 'desc',
-      },
+      where: { userId: user.id },
+      include: { object: true, variant: true },
+      orderBy: { startDate: "desc" },
     });
 
     return {
@@ -34,17 +28,21 @@ export class ReservationsService {
     };
   }
 
-  async cancel(user: SessionUser, reservationId: string, payload: CancelReservationDto) {
+  async cancel(
+    user: SessionUser,
+    reservationId: string,
+    payload: CancelReservationDto,
+  ) {
     const existingReservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
     });
 
     if (!existingReservation || existingReservation.userId !== user.id) {
-      throw new NotFoundException('Reservation not found.');
+      throw new NotFoundException("Reservation not found.");
     }
 
     if (existingReservation.status !== ReservationStatus.ACTIVE) {
-      throw new ConflictException('Only active reservations can be canceled.');
+      throw new ConflictException("Only active reservations can be canceled.");
     }
 
     const updatedReservation = await this.prisma.reservation.update({
@@ -54,15 +52,25 @@ export class ReservationsService {
         canceledAt: new Date(),
         cancelReason: payload.reason,
       },
-      include: {
-        object: true,
-        variant: true,
-      },
+      include: { object: true, variant: true },
     });
 
     return {
-      message: 'Reservation canceled.',
+      message: "Reservation canceled.",
       data: serializeReservation(updatedReservation),
     };
+  }
+
+  async create(user: SessionUser, dto: CreateReservationDto) {
+    return this.prisma.reservation.create({
+      data: {
+        user: { connect: { id: user.id } },
+        object: { connect: { id: dto.propertyId } },
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
+        guests: dto.guestCount,
+        status: ReservationStatus.ACTIVE,
+      },
+    });
   }
 }

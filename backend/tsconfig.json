@@ -2,19 +2,20 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["es2022"],
-    "allowJs": false,
-    "skipLibCheck": true,
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "strict": true,
-    "noEmit": false,
     "esModuleInterop": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
+    "skipLibCheck": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false,
-    "incremental": true
+    "isolatedModules": true,
+    "noEmit": false,
+    "incremental": true,
+    "paths": {
+      "@prisma-client": ["./src/generated/prisma/index.js"]
+    }
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/**/*.ts"],
   "exclude": ["node_modules"]
 }

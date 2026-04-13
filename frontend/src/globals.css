@@ -34,7 +34,7 @@
   --card-foreground: #2b2521;
   --popover: rgba(255, 252, 248, 0.98);
   --popover-foreground: #2b2521;
-  --primary: #d26e46;
+  --primary: #0f2fd2;
   --primary-foreground: #fff8f3;
   --secondary: #ede3d3;
   --secondary-foreground: #3d342d;
@@ -63,8 +63,16 @@ body {
   font-family: var(--font-sans);
   color: var(--foreground);
   background:
-    radial-gradient(circle at top left, rgba(226, 178, 136, 0.16), transparent 22%),
-    radial-gradient(circle at top right, rgba(109, 171, 165, 0.12), transparent 20%),
+    radial-gradient(
+      circle at top left,
+      rgba(226, 178, 136, 0.16),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(109, 171, 165, 0.12),
+      transparent 20%
+    ),
     linear-gradient(180deg, #f8f2e8 0%, #fcfaf6 42%, #f7f1e8 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -86,14 +94,26 @@ img {
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgba(255, 252, 248, 0.95), rgba(255, 249, 243, 0.86));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 248, 0.95),
+    rgba(255, 249, 243, 0.86)
+  );
   box-shadow: 0 20px 48px rgba(89, 61, 34, 0.1);
 }
 
 .ambient-panel {
   background:
-    radial-gradient(circle at 18% 20%, rgba(210, 110, 70, 0.12), transparent 24%),
-    radial-gradient(circle at 88% 12%, rgba(46, 107, 114, 0.12), transparent 18%),
+    radial-gradient(
+      circle at 18% 20%,
+      rgba(210, 110, 70, 0.12),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 88% 12%,
+      rgba(46, 107, 114, 0.12),
+      transparent 18%
+    ),
     linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(252, 246, 236, 0.9));
 }
 
@@ -102,12 +122,23 @@ img {
     linear-gradient(90deg, rgba(43, 36, 30, 0.04) 1px, transparent 1px),
     linear-gradient(rgba(43, 36, 30, 0.04) 1px, transparent 1px),
     linear-gradient(135deg, #f7f0e5 0%, #fffdf9 100%);
-  background-size: 34px 34px, 34px 34px, auto;
+  background-size:
+    34px 34px,
+    34px 34px,
+    auto;
 }
 
 .hero-spot {
   background:
-    radial-gradient(circle at 80% 15%, rgba(255, 230, 200, 0.2), transparent 24%),
-    radial-gradient(circle at 18% 82%, rgba(255, 255, 255, 0.08), transparent 18%),
+    radial-gradient(
+      circle at 80% 15%,
+      rgba(255, 230, 200, 0.2),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 18% 82%,
+      rgba(255, 255, 255, 0.08),
+      transparent 18%
+    ),
     linear-gradient(145deg, rgba(28, 53, 72, 0.94), rgba(43, 98, 105, 0.88));
 }
