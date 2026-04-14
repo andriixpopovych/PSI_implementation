@@ -14,6 +14,9 @@ describe("Reservation List (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let testUser: any;
+  const createdUserIds: string[] = [];
+  const createdObjectIds: string[] = [];
+  const createdReservationIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,6 +46,7 @@ describe("Reservation List (e2e)", () => {
         role: "HOST",
       },
     });
+    createdUserIds.push(host.id);
 
     testUser = await prisma.user.create({
       data: {
@@ -52,6 +56,7 @@ describe("Reservation List (e2e)", () => {
         role: "GUEST",
       },
     });
+    createdUserIds.push(testUser.id);
 
     const anotherUser = await prisma.user.create({
       data: {
@@ -61,6 +66,7 @@ describe("Reservation List (e2e)", () => {
         role: "GUEST",
       },
     });
+    createdUserIds.push(anotherUser.id);
 
     const object = await prisma.accommodationObject.create({
       data: {
@@ -72,6 +78,7 @@ describe("Reservation List (e2e)", () => {
         hostId: host.id,
       },
     });
+    createdObjectIds.push(object.id);
 
     const ownReservation = await prisma.reservation.create({
       data: {
@@ -83,8 +90,9 @@ describe("Reservation List (e2e)", () => {
         status: "ACTIVE",
       },
     });
+    createdReservationIds.push(ownReservation.id);
 
-    await prisma.reservation.create({
+    const anotherReservation = await prisma.reservation.create({
       data: {
         userId: anotherUser.id,
         objectId: object.id,
@@ -94,6 +102,7 @@ describe("Reservation List (e2e)", () => {
         status: "ACTIVE",
       },
     });
+    createdReservationIds.push(anotherReservation.id);
 
     const response = await request(app.getHttpServer()).get("/me/reservations");
 
@@ -106,9 +115,21 @@ describe("Reservation List (e2e)", () => {
   });
 
   afterAll(async () => {
-    await prisma.reservation.deleteMany();
-    await prisma.accommodationObject.deleteMany();
-    await prisma.user.deleteMany();
+    if (createdReservationIds.length > 0) {
+      await prisma.reservation.deleteMany({
+        where: { id: { in: createdReservationIds } },
+      });
+    }
+    if (createdObjectIds.length > 0) {
+      await prisma.accommodationObject.deleteMany({
+        where: { id: { in: createdObjectIds } },
+      });
+    }
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: createdUserIds } },
+      });
+    }
     await prisma.$disconnect();
     await app.close();
   });

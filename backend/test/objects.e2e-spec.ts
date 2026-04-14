@@ -14,6 +14,8 @@ describe("Objects (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let testUser: any;
+  const createdUserIds: string[] = [];
+  const createdObjectIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,6 +45,7 @@ describe("Objects (e2e)", () => {
         role: "HOST",
       },
     });
+    createdUserIds.push(testUser.id);
 
     const payload = {
       title: "River View Apartment",
@@ -74,6 +77,7 @@ describe("Objects (e2e)", () => {
       variants: [],
     });
     expect(response.body.data).toHaveProperty("id");
+    createdObjectIds.push(response.body.data.id);
 
     const createdObject = await prisma.accommodationObject.findUniqueOrThrow({
       where: { id: response.body.data.id },
@@ -84,8 +88,16 @@ describe("Objects (e2e)", () => {
   });
 
   afterAll(async () => {
-    await prisma.accommodationObject.deleteMany();
-    await prisma.user.deleteMany();
+    if (createdObjectIds.length > 0) {
+      await prisma.accommodationObject.deleteMany({
+        where: { id: { in: createdObjectIds } },
+      });
+    }
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: createdUserIds } },
+      });
+    }
     await prisma.$disconnect();
     await app.close();
   });

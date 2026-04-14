@@ -14,6 +14,7 @@ describe("Objects Forbidden (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let testUser: any;
+  const createdUserIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,6 +44,7 @@ describe("Objects Forbidden (e2e)", () => {
         role: "GUEST",
       },
     });
+    createdUserIds.push(testUser.id);
 
     const payload = {
       title: "Guest Apartment",
@@ -70,8 +72,11 @@ describe("Objects Forbidden (e2e)", () => {
   });
 
   afterAll(async () => {
-    await prisma.accommodationObject.deleteMany();
-    await prisma.user.deleteMany();
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: createdUserIds } },
+      });
+    }
     await prisma.$disconnect();
     await app.close();
   });

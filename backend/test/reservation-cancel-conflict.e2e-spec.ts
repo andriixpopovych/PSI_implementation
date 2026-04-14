@@ -14,6 +14,9 @@ describe("Reservation Cancel Conflict (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let testUser: any;
+  const createdUserIds: string[] = [];
+  const createdObjectIds: string[] = [];
+  const createdReservationIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,6 +46,7 @@ describe("Reservation Cancel Conflict (e2e)", () => {
         role: "GUEST",
       },
     });
+    createdUserIds.push(testUser.id);
 
     const host = await prisma.user.create({
       data: {
@@ -52,6 +56,7 @@ describe("Reservation Cancel Conflict (e2e)", () => {
         role: "HOST",
       },
     });
+    createdUserIds.push(host.id);
 
     const object = await prisma.accommodationObject.create({
       data: {
@@ -63,6 +68,7 @@ describe("Reservation Cancel Conflict (e2e)", () => {
         hostId: host.id,
       },
     });
+    createdObjectIds.push(object.id);
 
     const reservation = await prisma.reservation.create({
       data: {
@@ -76,6 +82,7 @@ describe("Reservation Cancel Conflict (e2e)", () => {
         canceledAt: new Date("2026-07-20"),
       },
     });
+    createdReservationIds.push(reservation.id);
 
     const response = await request(app.getHttpServer())
       .patch(`/reservations/${reservation.id}/cancel`)
@@ -88,9 +95,21 @@ describe("Reservation Cancel Conflict (e2e)", () => {
   });
 
   afterAll(async () => {
-    await prisma.reservation.deleteMany();
-    await prisma.accommodationObject.deleteMany();
-    await prisma.user.deleteMany();
+    if (createdReservationIds.length > 0) {
+      await prisma.reservation.deleteMany({
+        where: { id: { in: createdReservationIds } },
+      });
+    }
+    if (createdObjectIds.length > 0) {
+      await prisma.accommodationObject.deleteMany({
+        where: { id: { in: createdObjectIds } },
+      });
+    }
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: createdUserIds } },
+      });
+    }
     await prisma.$disconnect();
     await app.close();
   });
