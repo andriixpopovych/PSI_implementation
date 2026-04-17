@@ -2,7 +2,9 @@ import type { User } from '../../generated/prisma/client';
 
 import type { SessionUser } from './session-user.type';
 
-export function toSessionUser(user: Pick<User, 'id' | 'email' | 'fullName' | 'role'>): SessionUser {
+export function toSessionUser(
+  user: Pick<User, 'id' | 'email' | 'fullName' | 'role'>,
+): SessionUser {
   return {
     id: user.id,
     email: user.email,

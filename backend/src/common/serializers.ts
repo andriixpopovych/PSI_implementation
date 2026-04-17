@@ -19,6 +19,7 @@ export function serializeObject(
     city: object.city,
     country: object.country,
     address: object.address,
+    status: object.status,
     host: object.host
       ? {
           id: object.host.id,
@@ -26,6 +27,8 @@ export function serializeObject(
           email: object.host.email,
         }
       : null,
+    createdAt: object.createdAt,
+    updatedAt: object.updatedAt,
     variants:
       object.variants?.map((variant) => ({
         id: variant.id,

@@ -36,6 +36,12 @@ enum ReservationStatus {
   COMPLETED
 }
 
+enum ListingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id             String                @id @default(cuid())
   email          String                @unique
@@ -56,6 +62,7 @@ model AccommodationObject {
   city         String
   country      String
   address      String
+  status       ListingStatus          @default(APPROVED)
   hostId       String
   host         User                   @relation("HostedObjects", fields: [hostId], references: [id], onDelete: Cascade)
   variants     PlacementVariant[]

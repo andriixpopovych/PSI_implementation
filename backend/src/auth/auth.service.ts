@@ -1,19 +1,20 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import bcrypt from 'bcryptjs';
+} from "@nestjs/common";
+import bcrypt from "bcryptjs";
 
-import { toPublicUser, toSessionUser } from '../common/auth/user.utils';
-import type { SessionUser } from '../common/auth/session-user.type';
-import { UserRole } from '../generated/prisma/enums';
-import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
+import { toPublicUser, toSessionUser } from "../common/auth/user.utils";
+import type { SessionUser } from "../common/auth/session-user.type";
+import { UserRole } from "../generated/prisma/enums";
+import { PrismaService } from "../prisma/prisma.service";
+import { RegisterDto } from "./dto/register.dto";
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async register(payload: RegisterDto) {
     const email = payload.email.toLowerCase();
@@ -22,7 +23,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists.');
+      throw new ConflictException("User with this email already exists.");
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 12);
@@ -46,12 +47,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException("Invalid email or password.");
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException("Invalid email or password.");
     }
 
     return toSessionUser(user);

@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsDateString,
   IsInt,
+  IsOptional,
   Min,
 } from "class-validator";
 
@@ -10,6 +11,10 @@ export class CreateReservationDto {
   @IsString()
   @IsNotEmpty()
   propertyId!: string;
+
+  @IsString()
+  @IsOptional()
+  variantId?: string;
 
   @IsDateString()
   startDate!: string;

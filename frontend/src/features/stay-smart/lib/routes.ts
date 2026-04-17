@@ -4,6 +4,7 @@ export const staySmartRoutes = {
   results: '/results',
   host: '/host',
   addListing: '/host/add',
+  manager: '/manager',
   saved: '/host/saved',
   reservations: '/reservations',
   property: (propertyId = ':propertyId') => `/properties/${propertyId}`,
@@ -15,4 +16,8 @@ export function isHostPath(pathname: string) {
 
 export function isReservationsPath(pathname: string) {
   return pathname.startsWith(staySmartRoutes.reservations);
+}
+
+export function isManagerPath(pathname: string) {
+  return pathname.startsWith(staySmartRoutes.manager);
 }

@@ -1,18 +1,18 @@
-import 'dotenv/config';
-import 'reflect-metadata';
+import "dotenv/config";
+import "reflect-metadata";
 
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import passport from 'passport';
-import session from 'express-session';
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import passport from "passport";
+import session from "express-session";
 
-import { AppModule } from './app.module';
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix("api");
   app.enableCors({
     origin: true,
     credentials: true,
@@ -29,13 +29,13 @@ async function bootstrap() {
 
   app.use(
     session({
-      secret: process.env.PASSPORT_SESSION_SECRET ?? 'stay-smart-dev-secret',
+      secret: process.env.PASSPORT_SESSION_SECRET ?? "stay-smart-dev-secret",
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         maxAge: 1000 * 60 * 60 * 24 * 7,
       },
     }),

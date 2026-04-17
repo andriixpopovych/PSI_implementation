@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -17,7 +18,10 @@ import { CreateReservationDto } from "./dto/create-reservation.dto";
 
 @Controller()
 export class ReservationsController {
-  constructor(private readonly reservationsService: ReservationsService) {}
+  constructor(
+    @Inject(ReservationsService)
+    private readonly reservationsService: ReservationsService,
+  ) {}
 
   @UseGuards(AuthenticatedGuard)
   @Get("me/reservations")

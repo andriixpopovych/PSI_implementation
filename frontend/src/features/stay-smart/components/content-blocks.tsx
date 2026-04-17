@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 
 import { itemMotion } from '../lib/motion';
-import type { Property, Reservation } from '../lib/mock-data';
+import type { PropertyCardView, ReservationCardView } from '../lib/view-models';
 
 export function SectionHeading({
   title,
@@ -38,14 +38,23 @@ export function SectionHeading({
   );
 }
 
-export function SearchField({ label, defaultValue }: { label: string; defaultValue: string }) {
+export function SearchField({
+  label,
+  defaultValue,
+  onChange,
+}: {
+  label: string;
+  defaultValue: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <div className="space-y-2.5">
       <label className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </label>
       <Input
-        defaultValue={defaultValue}
+        value={defaultValue}
+        onChange={(event) => onChange?.(event.target.value)}
         className="h-16 rounded-[1.45rem] border-white/85 bg-white/86 px-6 text-[1.08rem] font-medium shadow-[0_8px_24px_rgba(89,61,34,0.06)]"
       />
     </div>
@@ -57,7 +66,7 @@ export function PropertyCard({
   to,
   index,
 }: {
-  property: Property;
+  property: PropertyCardView;
   to: string;
   index: number;
 }) {
@@ -106,7 +115,7 @@ export function ResultCard({
   to,
   index,
 }: {
-  property: Property;
+  property: PropertyCardView;
   to: string;
   index: number;
 }) {
@@ -169,8 +178,8 @@ export function ReservationCard({
   action,
   index,
 }: {
-  property: Property;
-  reservation: Reservation;
+  property: PropertyCardView;
+  reservation: ReservationCardView;
   action: ReactNode;
   index: number;
 }) {
@@ -207,7 +216,7 @@ export function ReservationCard({
   );
 }
 
-export function PropertyMeta({ property }: { property: Property }) {
+export function PropertyMeta({ property }: { property: PropertyCardView }) {
   return (
     <div className="flex flex-wrap gap-4 text-sm font-semibold text-muted-foreground">
       <MetaItem icon={<BedDouble className="size-4" />}>{property.beds}</MetaItem>

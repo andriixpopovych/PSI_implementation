@@ -1,11 +1,15 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from "@nestjs/common";
 
-import { SearchQueryDto } from './dto/search-query.dto';
-import { SearchService } from './search.service';
+import { SearchQueryDto } from "./dto/search-query.dto";
+import { SearchService } from "./search.service";
 
-@Controller('search')
+@Controller("search")
 export class SearchController {
-  constructor(private readonly searchService: SearchService) {}
+  private readonly searchService: SearchService;
+
+  constructor(@Inject(SearchService) searchService: SearchService) {
+    this.searchService = searchService;
+  }
 
   @Get()
   search(@Query() query: SearchQueryDto) {

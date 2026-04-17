@@ -1,26 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from "@nestjs/common";
 
-import { serializeObject } from '../common/serializers';
-import { PrismaService } from '../prisma/prisma.service';
-import { SearchQueryDto } from './dto/search-query.dto';
+import { ListingStatus } from "../generated/prisma/enums";
+import { serializeObject } from "../common/serializers";
+import { PrismaService } from "../prisma/prisma.service";
+import { SearchQueryDto } from "./dto/search-query.dto";
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async search(filters: SearchQueryDto) {
     const city = filters.city?.trim() || undefined;
     const { type, minPrice, maxPrice, guests } = filters;
     const needsVariantFilter =
-      typeof minPrice === 'number' || typeof maxPrice === 'number' || typeof guests === 'number';
+      typeof minPrice === "number" ||
+      typeof maxPrice === "number" ||
+      typeof guests === "number";
 
     const results = await this.prisma.accommodationObject.findMany({
       where: {
+        status: ListingStatus.APPROVED,
         ...(city
           ? {
               city: {
                 contains: city,
-                mode: 'insensitive',
+                mode: "insensitive",
               },
             }
           : {}),
@@ -29,9 +33,15 @@ export class SearchService {
           ? {
               variants: {
                 some: {
-                  ...(typeof minPrice === 'number' ? { pricePerNight: { gte: minPrice } } : {}),
-                  ...(typeof maxPrice === 'number' ? { pricePerNight: { lte: maxPrice } } : {}),
-                  ...(typeof guests === 'number' ? { guests: { gte: guests } } : {}),
+                  ...(typeof minPrice === "number"
+                    ? { pricePerNight: { gte: minPrice } }
+                    : {}),
+                  ...(typeof maxPrice === "number"
+                    ? { pricePerNight: { lte: maxPrice } }
+                    : {}),
+                  ...(typeof guests === "number"
+                    ? { guests: { gte: guests } }
+                    : {}),
                   isActive: true,
                 },
               },
@@ -49,19 +59,25 @@ export class SearchService {
         variants: {
           where: needsVariantFilter
             ? {
-                ...(typeof minPrice === 'number' ? { pricePerNight: { gte: minPrice } } : {}),
-                ...(typeof maxPrice === 'number' ? { pricePerNight: { lte: maxPrice } } : {}),
-                ...(typeof guests === 'number' ? { guests: { gte: guests } } : {}),
+                ...(typeof minPrice === "number"
+                  ? { pricePerNight: { gte: minPrice } }
+                  : {}),
+                ...(typeof maxPrice === "number"
+                  ? { pricePerNight: { lte: maxPrice } }
+                  : {}),
+                ...(typeof guests === "number"
+                  ? { guests: { gte: guests } }
+                  : {}),
                 isActive: true,
               }
             : undefined,
           orderBy: {
-            pricePerNight: 'asc',
+            pricePerNight: "asc",
           },
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
