@@ -1,6 +1,6 @@
-import type { ApiObject, ApiReservation, ListingStatus, SessionUser } from './api-types';
+import type { ApiLocationOption, ApiObject, ApiReservation, ListingStatus, SessionUser } from './api-types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 
 type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
@@ -22,7 +22,15 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
   });
 
   const text = await response.text();
-  const payload = text ? (JSON.parse(text) as unknown) : null;
+  let payload: unknown = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text) as unknown;
+    } catch {
+      payload = text;
+    }
+  }
 
   if (!response.ok) {
     const message =
@@ -31,6 +39,8 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
       'message' in payload &&
       typeof payload.message === 'string'
         ? payload.message
+        : typeof payload === 'string' && payload.trim().length > 0
+          ? payload
         : `Request failed with status ${response.status}.`;
 
     throw new Error(message);
@@ -86,6 +96,10 @@ export async function searchObjects(params: Record<string, string | number | und
   return apiRequest<{ count: number; data: ApiObject[] }>(`/search?${query.toString()}`);
 }
 
+export async function searchLocations() {
+  return apiRequest<{ count: number; data: ApiLocationOption[] }>('/search/locations');
+}
+
 export async function getObject(objectId: string) {
   return apiRequest<{ data: ApiObject }>(`/objects/${objectId}`);
 }
@@ -118,6 +132,22 @@ export async function getMyListings() {
   return apiRequest<{ count: number; data: ApiObject[] }>('/objects/me/listings');
 }
 
+export async function updateObject(
+  objectId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    city: string;
+    country: string;
+    address: string;
+  }>,
+) {
+  return apiRequest<{ message: string; data: ApiObject }>(`/objects/${objectId}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
 export async function createListing(payload: {
   title: string;
   description: string;
@@ -127,6 +157,7 @@ export async function createListing(payload: {
   address: string;
   initialVariant?: {
     title: string;
+    photoUrl?: string;
     type: ApiObject['variants'][number]['type'];
     guests: number;
     bedrooms: number;
@@ -134,11 +165,78 @@ export async function createListing(payload: {
     pricePerNight: number;
     pricePerMonth?: number;
   };
+  variants?: Array<{
+    title: string;
+    photoUrl?: string;
+    type: ApiObject['variants'][number]['type'];
+    guests: number;
+    bedrooms: number;
+    bathrooms: number;
+    pricePerNight: number;
+    pricePerMonth?: number;
+    isActive?: boolean;
+  }>;
 }) {
   return apiRequest<{ message: string; data: ApiObject }>('/objects', {
     method: 'POST',
     body: payload,
   });
+}
+
+export async function createObjectVariant(
+  objectId: string,
+  payload: {
+    title: string;
+    photoUrl?: string;
+    type: ApiObject['variants'][number]['type'];
+    guests: number;
+    bedrooms: number;
+    bathrooms: number;
+    pricePerNight: number;
+    pricePerMonth?: number;
+    isActive?: boolean;
+  },
+) {
+  return apiRequest<{ message: string; data: ApiObject['variants'][number] }>(
+    `/objects/${objectId}/variants`,
+    {
+      method: 'POST',
+      body: payload,
+    },
+  );
+}
+
+export async function updateObjectVariant(
+  objectId: string,
+  variantId: string,
+  payload: Partial<{
+    title: string;
+    photoUrl: string;
+    type: ApiObject['variants'][number]['type'];
+    guests: number;
+    bedrooms: number;
+    bathrooms: number;
+    pricePerNight: number;
+    pricePerMonth: number;
+    isActive: boolean;
+  }>,
+) {
+  return apiRequest<{ message: string; data: ApiObject['variants'][number] }>(
+    `/objects/${objectId}/variants/${variantId}`,
+    {
+      method: 'PATCH',
+      body: payload,
+    },
+  );
+}
+
+export async function deleteObjectVariant(objectId: string, variantId: string) {
+  return apiRequest<{ message: string }>(
+    `/objects/${objectId}/variants/${variantId}/delete`,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 export async function getListingsForReview(status?: ListingStatus) {

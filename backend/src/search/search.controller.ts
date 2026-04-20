@@ -11,6 +11,11 @@ export class SearchController {
     this.searchService = searchService;
   }
 
+  @Get("locations")
+  getLocations() {
+    return this.searchService.getLocations();
+  }
+
   @Get()
   search(@Query() query: SearchQueryDto) {
     return this.searchService.search(query);

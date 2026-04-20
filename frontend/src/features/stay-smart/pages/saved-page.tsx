@@ -26,7 +26,7 @@ export function SavedPage() {
               Thanks, your property is saved!
             </h2>
             <p className="mx-auto max-w-[34ch] text-base leading-8 text-muted-foreground">
-              Your listing is ready for the next step and can now be reviewed from the host area.
+              Your listing is saved and ready for the next step.
             </p>
           </div>
           <Button size="lg" onClick={() => navigate(staySmartRoutes.host)}>

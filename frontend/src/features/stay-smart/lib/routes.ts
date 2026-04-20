@@ -4,6 +4,8 @@ export const staySmartRoutes = {
   results: '/results',
   host: '/host',
   addListing: '/host/add',
+  manageObject: (propertyId = ':propertyId') => `/host/${propertyId}/manage`,
+  manageVariants: (propertyId = ':propertyId') => `/host/${propertyId}/variants`,
   manager: '/manager',
   saved: '/host/saved',
   reservations: '/reservations',

@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type SyntheticEvent } from "react";
 import { motion } from "framer-motion";
 import {
   Bath,
   BedDouble,
-  CalendarIcon,
   CarFront,
+  CheckCircle2,
+  ExternalLink,
   MapPin,
   PawPrint,
 } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "@/app/auth-context";
 import { useToast } from "@/app/toast-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -22,12 +22,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +39,19 @@ import {
   SectionHeading,
   StatCard,
 } from "../components/content-blocks";
+import { DateField } from "../components/search-controls";
+import { SmartImage } from "../components/smart-image";
 import { createReservation, getObject } from "../lib/api";
-import type { ApiObject } from "../lib/api-types";
+import type { ApiObject, ApiVariant } from "../lib/api-types";
+import {
+  calculateReservationTotal,
+  formatBookingCurrency,
+  getNightCount,
+} from "../lib/booking";
+import { getDemoImageFallback } from "../lib/media";
 import { amenityGroups, safetyItems } from "../lib/mock-data";
 import { itemMotion } from "../lib/motion";
+import { staySmartRoutes } from "../lib/routes";
 import { mapObjectToCardView, prettifyType } from "../lib/view-models";
 
 function formatDateLabel(value?: Date) {
@@ -65,7 +77,37 @@ function startOfDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+function clampGuestCount(value: number, maxGuests: number) {
+  return Math.max(1, Math.min(value, Math.max(1, maxGuests)));
+}
+
+function buildVariantDescription(variant: ApiVariant) {
+  const pieces = [
+    prettifyType(variant.type),
+    `${variant.guests} guest${variant.guests === 1 ? "" : "s"}`,
+    `${variant.bedrooms} bedroom${variant.bedrooms === 1 ? "" : "s"}`,
+    `${variant.bathrooms} bathroom${variant.bathrooms === 1 ? "" : "s"}`,
+  ];
+
+  if (variant.pricePerMonth) {
+    pieces.push(`monthly option $${variant.pricePerMonth}`);
+  }
+
+  return pieces.join(" · ");
+}
+
+type BookingReceipt = {
+  reservationId: string;
+  variantTitle: string;
+  total: number;
+  nightCount: number;
+  guestCount: number;
+  startLabel: string;
+  endLabel: string;
+};
+
 export function DetailPage() {
+  const navigate = useNavigate();
   const { propertyId } = useParams();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -73,6 +115,14 @@ export function DetailPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     null,
   );
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [isSubmittingReservation, setIsSubmittingReservation] = useState(false);
+  const [bookingReceipt, setBookingReceipt] = useState<BookingReceipt | null>(
+    null,
+  );
+  const [portraitGalleryImages, setPortraitGalleryImages] = useState<
+    Record<string, boolean>
+  >({});
   const [message, setMessage] = useState<string | null>(null);
   const [booking, setBooking] = useState({
     startDate: new Date("2027-03-12"),
@@ -104,11 +154,33 @@ export function DetailPage() {
   }
 
   const property = mapObjectToCardView(object);
+  const galleryImages =
+    property.images.length > 0 ? Array.from(new Set(property.images)) : [property.image];
+  const secondaryGalleryImages = galleryImages.slice(1);
+  const secondaryGalleryClassName =
+    secondaryGalleryImages.length === 2
+      ? "grid min-w-0 gap-5 xl:h-full xl:grid-rows-2"
+      : "grid min-w-0 gap-5 sm:grid-cols-2 xl:h-full xl:auto-rows-fr xl:grid-cols-2";
   const selectedVariant =
     object.variants.find((variant) => variant.id === selectedVariantId) ??
     object.variants[0];
+  const guestCount = clampGuestCount(
+    Number(booking.guestCount) || 1,
+    selectedVariant?.guests ?? 12,
+  );
+  const { nightCount, staySubtotal, serviceFee, extraGuestFee, total: bookingTotal } =
+    calculateReservationTotal({
+      pricePerNight: selectedVariant?.pricePerNight,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      guests: guestCount,
+    });
+  const mapQuery = `${object.address}, ${object.city}, ${object.country}`;
+  const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(
+    mapQuery,
+  )}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
 
-  const reserve = async () => {
+  const submitReservation = async () => {
     if (!user) {
       const nextMessage = "Login as guest first to create a reservation.";
       setMessage(nextMessage);
@@ -140,21 +212,40 @@ export function DetailPage() {
       return;
     }
 
+    if (guestCount > selectedVariant.guests) {
+      showToast({
+        variant: "error",
+        title: "Guest limit reached",
+        description: `This variant allows up to ${selectedVariant.guests} guest${selectedVariant.guests === 1 ? "" : "s"}.`,
+      });
+      return;
+    }
+
     try {
-      await createReservation({
+      setIsSubmittingReservation(true);
+      const reservation = await createReservation({
         propertyId: object.id,
         variantId: selectedVariant.id,
         startDate: toIsoDate(checkIn),
         endDate: toIsoDate(checkOut),
-        guestCount: Number(booking.guestCount),
+        guestCount,
       });
       const nextMessage =
-        "Reservation created. Open Reservations to show the demo flow.";
+        "Reservation created. You can review it in Reservations.";
       setMessage(nextMessage);
+      setBookingReceipt({
+        reservationId: reservation.id,
+        variantTitle: selectedVariant.title,
+        total: bookingTotal,
+        nightCount,
+        guestCount,
+        startLabel: formatDateLabel(checkIn),
+        endLabel: formatDateLabel(checkOut),
+      });
       showToast({
         variant: "success",
         title: "Reservation created",
-        description: "Open Reservations to manage it.",
+        description: `${selectedVariant.title} is ready for ${nightCount} night${nightCount === 1 ? "" : "s"}.`,
       });
     } catch (error) {
       const nextMessage =
@@ -167,6 +258,8 @@ export function DetailPage() {
         title: "Reservation failed",
         description: nextMessage,
       });
+    } finally {
+      setIsSubmittingReservation(false);
     }
   };
 
@@ -183,9 +276,10 @@ export function DetailPage() {
           variants={itemMotion}
           className="relative min-w-0 overflow-hidden rounded-[2rem] xl:min-h-[470px]"
         >
-          <img
-            src={property.image}
+          <SmartImage
+            src={galleryImages[0] ?? property.image}
             alt={property.title}
+            fallbackSrc={getDemoImageFallback(0)}
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -207,15 +301,56 @@ export function DetailPage() {
 
         <motion.div
           variants={itemMotion}
-          className="grid min-w-0 gap-5 sm:grid-cols-2 xl:grid-cols-2"
+          className={secondaryGalleryClassName}
         >
-          {[0, 1, 2, 3].map((tile) => (
-            <div key={tile} className="overflow-hidden rounded-[1.7rem]">
-              <img
-                src={property.image}
-                alt={property.title}
-                className="aspect-[1/0.86] w-full object-cover"
-              />
+          {secondaryGalleryImages.map((image, tile) => (
+            <div
+              key={`${image}-${tile}`}
+              className="overflow-hidden rounded-[1.7rem] min-h-[180px] xl:h-full xl:min-h-0"
+            >
+              {portraitGalleryImages[image] ? (
+                <div className="flex h-full items-center justify-center bg-[rgba(255,252,248,0.92)] p-5 xl:p-6">
+                  <SmartImage
+                    src={image}
+                    alt={`${property.title} preview ${tile + 2}`}
+                    fallbackSrc={getDemoImageFallback(tile + 1)}
+                    onLoad={(event: SyntheticEvent<HTMLImageElement>) => {
+                      const target = event.currentTarget;
+                      const isPortrait =
+                        target.naturalHeight > target.naturalWidth * 1.15;
+
+                      setPortraitGalleryImages((current) =>
+                        current[image] === isPortrait
+                          ? current
+                          : { ...current, [image]: isPortrait },
+                      );
+                    }}
+                    className="max-h-[72%] w-auto max-w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <SmartImage
+                  src={image}
+                  alt={`${property.title} preview ${tile + 2}`}
+                  fallbackSrc={getDemoImageFallback(tile + 1)}
+                  onLoad={(event: SyntheticEvent<HTMLImageElement>) => {
+                    const target = event.currentTarget;
+                    const isPortrait =
+                      target.naturalHeight > target.naturalWidth * 1.15;
+
+                    setPortraitGalleryImages((current) =>
+                      current[image] === isPortrait
+                        ? current
+                        : { ...current, [image]: isPortrait },
+                    );
+                  }}
+                  className={
+                    secondaryGalleryImages.length === 2
+                      ? "aspect-[1.8/1] w-full object-cover xl:h-full xl:aspect-auto"
+                      : "h-full w-full object-cover"
+                  }
+                />
+              )}
             </div>
           ))}
         </motion.div>
@@ -280,13 +415,36 @@ export function DetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="map-grid relative overflow-hidden rounded-[2rem]">
-            <CardContent className="relative min-h-[320px] overflow-hidden rounded-[inherit] p-0">
-              <div className="absolute left-[12%] top-[55%] h-px w-[70%] rotate-[-16deg] bg-foreground/10" />
-              <div className="absolute left-[24%] top-[35%] h-px w-[52%] rotate-[24deg] bg-foreground/10" />
-              <div className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-primary shadow-[0_18px_36px_rgba(89,61,34,0.16)]">
-                <MapPin className="size-5" />
+          <Card className="overflow-hidden rounded-[2rem] border-white/70">
+            <CardHeader className="pb-3">
+              <CardTitle>Location</CardTitle>
+              <CardDescription>
+                {object.address}, {object.city}, {object.country}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="relative overflow-hidden rounded-[1.7rem] border border-white/80 bg-white/80">
+                <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white/92 px-3 py-2 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(89,61,34,0.12)]">
+                  <MapPin className="size-4 text-primary" />
+                  Map preview
+                </div>
+                <iframe
+                  title={`Map for ${property.title}`}
+                  src={googleMapsEmbedUrl}
+                  className="h-[320px] w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
               </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+              >
+                Open in Google Maps
+                <ExternalLink className="size-4" />
+              </a>
             </CardContent>
           </Card>
         </motion.div>
@@ -299,7 +457,7 @@ export function DetailPage() {
             <CardHeader className="pb-4">
               <CardTitle>{property.price}</CardTitle>
               <CardDescription>
-                Creates a real reservation via backend session auth.
+                Pick dates now, then choose the final stay option in the booking window.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -309,136 +467,95 @@ export function DetailPage() {
                 <p>Monthly: {selectedVariant?.pricePerMonth ?? "n/a"} USD</p>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">
-                  Choose placement variant
+              <div className="rounded-[1.6rem] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm leading-7 text-muted-foreground">
+                <p className="font-semibold text-foreground">
+                  Final option is chosen after Reserve Now
                 </p>
-                <div className="grid gap-2">
-                  {object.variants.map((variant) => {
-                    const isActive = variant.id === selectedVariant?.id;
-                    return (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => setSelectedVariantId(variant.id)}
-                        className={cn(
-                          "rounded-2xl border px-3 py-2 text-left transition",
-                          isActive
-                            ? "border-primary/30 bg-primary/10 text-primary"
-                            : "border-border bg-white/60 text-foreground hover:bg-white",
-                        )}
-                      >
-                        <p className="text-sm font-semibold">{variant.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {variant.type.replace(/_/g, " ")} · {variant.guests}{" "}
-                          guests · ${variant.pricePerNight}/night
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="mt-1">
+                  We will show every available variant in a confirmation window
+                  together with an estimated total before the reservation is
+                  sent.
+                </p>
               </div>
 
               <Separator />
 
               <div className="space-y-3">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start rounded-2xl font-semibold"
-                    >
-                      <CalendarIcon className="size-4" />
-                      Check-in: {formatDateLabel(booking.startDate)}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={booking.startDate}
-                      onSelect={(date) => {
-                        if (!date) {
-                          return;
-                        }
+                <DateField
+                  label={`Check In · ${formatDateLabel(booking.startDate)}`}
+                  value={toIsoDate(booking.startDate)}
+                  onChange={(value) => {
+                    const nextStartDate = startOfDay(new Date(value));
+                    if (Number.isNaN(nextStartDate.getTime())) {
+                      return;
+                    }
 
-                        setBooking((current) => {
-                          const nextStartDate = startOfDay(date);
-                          const currentEndDate = startOfDay(current.endDate);
-                          const nextEndDate =
-                            nextStartDate >= currentEndDate
-                              ? new Date(
-                                  nextStartDate.getFullYear(),
-                                  nextStartDate.getMonth(),
-                                  nextStartDate.getDate() + 1,
-                                )
-                              : current.endDate;
+                    setBooking((current) => {
+                      const currentEndDate = startOfDay(current.endDate);
+                      const nextEndDate =
+                        nextStartDate >= currentEndDate
+                          ? new Date(
+                              nextStartDate.getFullYear(),
+                              nextStartDate.getMonth(),
+                              nextStartDate.getDate() + 1,
+                            )
+                          : current.endDate;
 
-                          return {
-                            ...current,
-                            startDate: nextStartDate,
-                            endDate: nextEndDate,
-                          };
-                        });
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
+                      return {
+                        ...current,
+                        startDate: nextStartDate,
+                        endDate: nextEndDate,
+                      };
+                    });
+                  }}
+                />
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start rounded-2xl font-semibold"
-                    >
-                      <CalendarIcon className="size-4" />
-                      Check-out: {formatDateLabel(booking.endDate)}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={booking.endDate}
-                      onSelect={(date) => {
-                        if (!date) {
-                          return;
-                        }
+                <DateField
+                  label={`Check Out · ${formatDateLabel(booking.endDate)}`}
+                  value={toIsoDate(booking.endDate)}
+                  min={toIsoDate(booking.startDate)}
+                  onChange={(value) => {
+                    const nextEndDate = startOfDay(new Date(value));
+                    if (Number.isNaN(nextEndDate.getTime())) {
+                      return;
+                    }
 
-                        setBooking((current) => ({
-                          ...current,
-                          endDate: startOfDay(date),
-                        }));
-                      }}
-                      disabled={(date) =>
-                        startOfDay(date) <= startOfDay(booking.startDate)
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
+                    setBooking((current) => ({
+                      ...current,
+                      endDate: nextEndDate,
+                    }));
+                  }}
+                />
 
                 <Input
                   type="number"
                   min={1}
                   max={selectedVariant?.guests ?? 12}
-                  value={booking.guestCount}
+                  value={guestCount}
                   onChange={(event) =>
                     setBooking((current) => ({
                       ...current,
-                      guestCount: event.target.value,
+                      guestCount: String(
+                        clampGuestCount(
+                          Number(event.target.value) || 1,
+                          selectedVariant?.guests ?? 12,
+                        ),
+                      ),
                     }))
                   }
                 />
               </div>
 
               <div className="space-y-3">
-                <Button className="w-full" onClick={() => void reserve()}>
-                  Reserve Now
-                </Button>
                 <Button
-                  variant="outline"
-                  className="w-full rounded-full border-white/80 bg-white/70"
-                  disabled
+                  className="w-full"
+                  onClick={() => {
+                    setBookingReceipt(null);
+                    setIsBookingDialogOpen(true);
+                  }}
+                  disabled={!selectedVariant}
                 >
-                  Property Inquiry
+                  Reserve Now
                 </Button>
               </div>
 
@@ -451,6 +568,253 @@ export function DetailPage() {
           </Card>
         </motion.aside>
       </section>
+
+      <Dialog
+        open={isBookingDialogOpen}
+        onOpenChange={(open) => {
+          setIsBookingDialogOpen(open);
+          if (!open) {
+            setBookingReceipt(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[min(920px,calc(100%-24px))] max-w-none overflow-hidden p-0">
+          {bookingReceipt ? (
+            <div className="bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(252,245,237,0.98),rgba(242,227,210,0.92))] p-8 sm:p-10">
+              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-[0_18px_36px_rgba(16,185,129,0.16)]">
+                <CheckCircle2 className="size-8" />
+              </div>
+              <DialogHeader className="mt-6">
+                <DialogTitle className="text-center">
+                  Reservation confirmed
+                </DialogTitle>
+                <DialogDescription className="max-w-[42ch]">
+                  {bookingReceipt.variantTitle} is booked from{" "}
+                  {bookingReceipt.startLabel} to {bookingReceipt.endLabel} for{" "}
+                  {bookingReceipt.guestCount} guest
+                  {bookingReceipt.guestCount === 1 ? "" : "s"}.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 text-center shadow-[0_14px_30px_rgba(89,61,34,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Reservation ID
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {bookingReceipt.reservationId.slice(0, 8)}
+                  </p>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 text-center shadow-[0_14px_30px_rgba(89,61,34,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Stay Length
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {bookingReceipt.nightCount} night
+                    {bookingReceipt.nightCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 text-center shadow-[0_14px_30px_rgba(89,61,34,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Total
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {formatBookingCurrency(bookingReceipt.total)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[1.6rem] border border-white/80 bg-white/84 p-5 shadow-[0_18px_40px_rgba(89,61,34,0.08)]">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  What happens next
+                </p>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  You can now open the Reservations page to review or cancel this stay.
+                </p>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    setIsBookingDialogOpen(false);
+                    setBookingReceipt(null);
+                  }}
+                >
+                  Close
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setIsBookingDialogOpen(false);
+                    setBookingReceipt(null);
+                    navigate(staySmartRoutes.reservations);
+                  }}
+                >
+                  Open Reservations
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="grid gap-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+              <div className="border-b border-white/60 p-8 lg:border-b-0 lg:border-r">
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-left">
+                    Choose your stay option
+                  </DialogTitle>
+                  <DialogDescription className="mx-0 max-w-none text-left">
+                    Pick the variant you want, review the estimate, then confirm the reservation.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="mt-6 grid gap-3">
+                  {object.variants.map((variant) => {
+                    const isActive = variant.id === selectedVariant?.id;
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedVariantId(variant.id);
+                          setBooking((current) => ({
+                            ...current,
+                            guestCount: String(
+                              clampGuestCount(
+                                Number(current.guestCount) || 1,
+                                variant.guests,
+                              ),
+                            ),
+                          }));
+                        }}
+                        className={cn(
+                          "rounded-[1.5rem] border px-4 py-4 text-left transition",
+                          isActive
+                            ? "border-primary/30 bg-primary/10 text-primary shadow-[0_16px_32px_rgba(157,69,39,0.12)]"
+                            : "border-white/80 bg-white/70 text-foreground hover:bg-white",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-base font-semibold">
+                              {variant.title}
+                            </p>
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                              {buildVariantDescription(variant)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-semibold">
+                              {formatBookingCurrency(variant.pricePerNight)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              per night
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-[1.1rem] bg-white/70 px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                            {variant.bedrooms} bedrooms
+                          </div>
+                          <div className="rounded-[1.1rem] bg-white/70 px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                            {variant.bathrooms} bathrooms
+                          </div>
+                          <div className="rounded-[1.1rem] bg-white/70 px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                            Up to {variant.guests} guests
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(252,245,237,0.98),rgba(242,227,210,0.92))] p-8">
+                <div className="rounded-[1.6rem] border border-white/80 bg-white/84 p-5 shadow-[0_18px_40px_rgba(89,61,34,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Booking summary
+                  </p>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-muted-foreground">Variant</span>
+                      <span className="text-right font-semibold text-foreground">
+                        {selectedVariant?.title ?? "Not available"}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-muted-foreground">Dates</span>
+                      <span className="text-right font-semibold text-foreground">
+                        {formatDateLabel(booking.startDate)} to{" "}
+                        {formatDateLabel(booking.endDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-muted-foreground">Guests</span>
+                      <span className="text-right font-semibold text-foreground">
+                        {guestCount} guest{guestCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-muted-foreground">Stay length</span>
+                      <span className="text-right font-semibold text-foreground">
+                        {nightCount} night{nightCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[1.6rem] border border-white/80 bg-white/88 p-5 shadow-[0_18px_40px_rgba(89,61,34,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Estimated total
+                  </p>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                      <span>
+                        {formatBookingCurrency(selectedVariant?.pricePerNight ?? 0)} x{" "}
+                        {nightCount} night{nightCount === 1 ? "" : "s"}
+                      </span>
+                      <span>{formatBookingCurrency(staySubtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                      <span>Service fee</span>
+                      <span>{formatBookingCurrency(serviceFee)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                      <span>Extra guest fee</span>
+                      <span>{formatBookingCurrency(extraGuestFee)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between gap-4 text-base font-semibold text-foreground">
+                      <span>Total due now</span>
+                      <span>{formatBookingCurrency(bookingTotal)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setIsBookingDialogOpen(false)}
+                    disabled={isSubmittingReservation}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={() => void submitReservation()}
+                    disabled={!selectedVariant || isSubmittingReservation}
+                  >
+                    {isSubmittingReservation
+                      ? "Confirming..."
+                      : "Confirm reservation"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

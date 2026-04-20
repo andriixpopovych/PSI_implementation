@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Check, SlidersHorizontal } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -17,48 +17,62 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
-const defaultPriceRange = [1200, 3200] as [number, number];
-const propertyTypes = ['Apartment', 'Flat', 'Room', 'Villa'];
-const stayPeriods = ['Weekend', 'Short term', 'Monthly', 'Long stay'];
-const amenities = ['Parking', 'Pets ok', 'Fast Wi-Fi', 'Balcony', 'Netflix', 'Washer'];
-const sortModes = ['Recommended', 'Lowest price', 'Best rated'];
+export const catalogSortModes = [
+  'Recommended',
+  'Lowest price',
+  'Highest price',
+  'Most guests',
+] as const;
 
-export function CatalogFiltersDrawer() {
-  const [priceRange, setPriceRange] = useState<[number, number]>(defaultPriceRange);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['Apartment', 'Villa']);
-  const [selectedPeriods, setSelectedPeriods] = useState<string[]>(['Short term']);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['Parking', 'Fast Wi-Fi']);
-  const [sortBy, setSortBy] = useState(sortModes[0]);
+export type CatalogSortMode = (typeof catalogSortModes)[number];
+
+export type CatalogDrawerFilters = {
+  priceRange: [number, number];
+  selectedTypes: string[];
+  sortBy: CatalogSortMode;
+};
+
+export const defaultCatalogDrawerFilters: CatalogDrawerFilters = {
+  priceRange: [0, 5000],
+  selectedTypes: [],
+  sortBy: 'Recommended',
+};
+
+export function CatalogFiltersDrawer({
+  value,
+  propertyTypes,
+  onChange,
+  onReset,
+}: {
+  value: CatalogDrawerFilters;
+  propertyTypes: string[];
+  onChange: (value: CatalogDrawerFilters) => void;
+  onReset: () => void;
+}) {
+  const { priceRange, selectedTypes, sortBy } = value;
 
   const activeFiltersCount = useMemo(() => {
     const hasCustomPrice =
-      priceRange[0] !== defaultPriceRange[0] || priceRange[1] !== defaultPriceRange[1];
+      priceRange[0] !== defaultCatalogDrawerFilters.priceRange[0] ||
+      priceRange[1] !== defaultCatalogDrawerFilters.priceRange[1];
 
     return (
       Number(hasCustomPrice) +
       selectedTypes.length +
-      selectedPeriods.length +
-      selectedAmenities.length +
-      Number(sortBy !== sortModes[0])
+      Number(sortBy !== catalogSortModes[0])
     );
-  }, [priceRange, selectedTypes, selectedPeriods, selectedAmenities, sortBy]);
+  }, [priceRange, selectedTypes, sortBy]);
 
-  const toggleValue = (
-    currentValues: string[],
-    value: string,
-    setValues: React.Dispatch<React.SetStateAction<string[]>>,
-  ) => {
-    setValues((items) =>
-      items.includes(value) ? items.filter((item) => item !== value) : [...items, value],
-    );
-  };
+  const toggleType = (type: string) => {
+    const nextTypes = selectedTypes.includes(type)
+      ? selectedTypes.filter((item) => item !== type)
+      : [...selectedTypes, type];
 
-  const resetFilters = () => {
-    setPriceRange(defaultPriceRange);
-    setSelectedTypes(['Apartment', 'Villa']);
-    setSelectedPeriods(['Short term']);
-    setSelectedAmenities(['Parking', 'Fast Wi-Fi']);
-    setSortBy(sortModes[0]);
+    onChange({
+      priceRange,
+      selectedTypes: nextTypes,
+      sortBy,
+    });
   };
 
   return (
@@ -80,7 +94,7 @@ export function CatalogFiltersDrawer() {
               <div className="space-y-3">
                 <Badge variant="default">Catalog filters</Badge>
                 <DrawerTitle>Filters</DrawerTitle>
-                <DrawerDescription>Price, type, stay length and amenities.</DrawerDescription>
+                <DrawerDescription>Only filters that actually affect the catalog.</DrawerDescription>
               </div>
 
               <div className="rounded-[1.4rem] border border-white/80 bg-white/78 px-4 py-3 text-right shadow-[0_10px_26px_rgba(89,61,34,0.05)]">
@@ -104,29 +118,38 @@ export function CatalogFiltersDrawer() {
                   </div>
                   <Slider
                     value={priceRange}
-                    min={400}
+                    min={0}
                     max={5000}
                     step={100}
                     minStepsBetweenThumbs={2}
-                    onValueChange={(value) => setPriceRange(value as [number, number])}
+                    onValueChange={(nextValue) =>
+                      onChange({
+                        priceRange: nextValue as [number, number],
+                        selectedTypes,
+                        sortBy,
+                      })
+                    }
                   />
                   <div className="flex flex-wrap gap-2">
-                    {['Budget', 'Balanced', 'Premium'].map((tag) => (
-                      <Badge key={tag} variant="muted">
-                        {tag}
-                      </Badge>
-                    ))}
+                    <Badge variant="muted">Nightly price</Badge>
+                    <Badge variant="muted">Updates the feed</Badge>
                   </div>
                 </div>
               </FilterPanel>
 
               <FilterPanel title="Sort by">
                 <div className="grid gap-2">
-                  {sortModes.map((option) => (
+                  {catalogSortModes.map((option) => (
                     <FilterRowButton
                       key={option}
                       active={sortBy === option}
-                      onClick={() => setSortBy(option)}
+                      onClick={() =>
+                        onChange({
+                          priceRange,
+                          selectedTypes,
+                          sortBy: option,
+                        })
+                      }
                       label={option}
                     />
                   ))}
@@ -139,37 +162,10 @@ export function CatalogFiltersDrawer() {
                     <FilterChip
                       key={type}
                       active={selectedTypes.includes(type)}
-                      onClick={() => toggleValue(selectedTypes, type, setSelectedTypes)}
+                      onClick={() => toggleType(type)}
                     >
                       {type}
                     </FilterChip>
-                  ))}
-                </div>
-              </FilterPanel>
-
-              <FilterPanel title="Stay length">
-                <div className="flex flex-wrap gap-3">
-                  {stayPeriods.map((period) => (
-                    <FilterChip
-                      key={period}
-                      active={selectedPeriods.includes(period)}
-                      onClick={() => toggleValue(selectedPeriods, period, setSelectedPeriods)}
-                    >
-                      {period}
-                    </FilterChip>
-                  ))}
-                </div>
-              </FilterPanel>
-
-              <FilterPanel title="Amenities" className="lg:col-span-2">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {amenities.map((amenity) => (
-                    <FilterRowButton
-                      key={amenity}
-                      active={selectedAmenities.includes(amenity)}
-                      onClick={() => toggleValue(selectedAmenities, amenity, setSelectedAmenities)}
-                      label={amenity}
-                    />
                   ))}
                 </div>
               </FilterPanel>
@@ -177,7 +173,7 @@ export function CatalogFiltersDrawer() {
           </div>
 
           <DrawerFooter className="border-t border-white/60">
-            <Button variant="outline" className="sm:min-w-36" onClick={resetFilters}>
+            <Button variant="outline" className="sm:min-w-36" onClick={onReset}>
               Reset
             </Button>
             <DrawerClose asChild>

@@ -1,12 +1,18 @@
 import type { ApiObject, ApiReservation, ListingStatus } from './api-types';
+import { calculateReservationTotal, formatBookingCurrency } from './booking';
+import { getDemoImageFallback } from './media';
 
 export type PropertyCardView = {
   id: string;
   title: string;
   address: string;
+  city: string;
+  country: string;
   price: string;
+  nightlyPrice: number | null;
   beds: number;
   baths: number;
+  maxGuests: number;
   parking: number;
   pets: number;
   host: string;
@@ -14,6 +20,7 @@ export type PropertyCardView = {
   period: string;
   badge: string;
   image: string;
+  images: string[];
   status: ListingStatus;
   description: string;
   variants: ApiObject['variants'];
@@ -23,31 +30,20 @@ export type ReservationCardView = {
   id: string;
   propertyId: string;
   checkIn: string;
+  checkOut: string;
   duration: string;
   guests: string;
   price: string;
-  status: 'upcoming' | 'past';
+  status: 'upcoming' | 'completed' | 'canceled';
   apiStatus: ApiReservation['status'];
 };
-
-const fallbackImages = [
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80',
-];
 
 function formatCurrency(value?: number | null) {
   if (!value) {
     return 'Price on request';
   }
 
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatBookingCurrency(value);
 }
 
 function formatDate(value: string) {
@@ -69,18 +65,35 @@ function formatDuration(startDate: string, endDate: string) {
   return `${diffInDays} day${diffInDays === 1 ? '' : 's'}`;
 }
 
+function getVariantImages(object: ApiObject, index = 0) {
+  const variantImages = object.variants
+    .map((variant) => variant.photoUrl)
+    .filter((image): image is string => Boolean(image));
+
+  if (variantImages.length > 0) {
+    return Array.from(new Set(variantImages));
+  }
+
+  return [getDemoImageFallback(index)];
+}
+
 export function mapObjectToCardView(object: ApiObject, index = 0): PropertyCardView {
   const mainVariant = object.variants[0];
+  const images = getVariantImages(object, index);
 
   return {
     id: object.id,
     title: object.title,
     address: `${object.address}, ${object.city}, ${object.country}`,
+    city: object.city,
+    country: object.country,
     price: mainVariant
       ? `${formatCurrency(mainVariant.pricePerNight)} / night`
       : 'Variant missing',
+    nightlyPrice: mainVariant?.pricePerNight ?? null,
     beds: mainVariant?.bedrooms ?? 0,
     baths: mainVariant?.bathrooms ?? 0,
+    maxGuests: Math.max(...object.variants.map((variant) => variant.guests), 0),
     parking: Math.max(0, Math.min(2, mainVariant?.bedrooms ?? 0)),
     pets: 0,
     host: object.host?.fullName ?? 'Stay Smart Host',
@@ -89,7 +102,8 @@ export function mapObjectToCardView(object: ApiObject, index = 0): PropertyCardV
       ? `${formatCurrency(mainVariant.pricePerMonth)} / month`
       : 'Short and medium stays',
     badge: listingBadge(object.status),
-    image: fallbackImages[index % fallbackImages.length],
+    image: images[0],
+    images,
     status: object.status,
     description:
       object.description ?? 'Comfortable place prepared for quick demo and reservation flows.',
@@ -121,17 +135,27 @@ export function mapReservationToCardView(
       : null);
 
   const variantPrice = reservation.variant?.pricePerNight ?? relatedObject?.variants[0]?.pricePerNight ?? null;
+  const reservationPricing = calculateReservationTotal({
+    pricePerNight: variantPrice,
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
+    guests: reservation.guests,
+  });
   const now = Date.now();
-  const isPast = new Date(reservation.endDate).getTime() < now || reservation.status !== 'ACTIVE';
+  const isCanceled = reservation.status === 'CANCELED';
+  const isCompleted =
+    reservation.status === 'COMPLETED' ||
+    (!isCanceled && new Date(reservation.endDate).getTime() < now);
 
   return {
     id: reservation.id,
     propertyId: reservation.object?.id ?? relatedObject?.id ?? '',
     checkIn: formatDate(reservation.startDate),
+    checkOut: formatDate(reservation.endDate),
     duration: formatDuration(reservation.startDate, reservation.endDate),
     guests: `${reservation.guests} guest${reservation.guests === 1 ? '' : 's'}`,
-    price: variantPrice ? `${formatCurrency(variantPrice)}` : 'Reserved',
-    status: isPast ? 'past' : 'upcoming',
+    price: variantPrice ? `${formatBookingCurrency(reservationPricing.total)} total` : 'Reserved',
+    status: isCanceled ? 'canceled' : isCompleted ? 'completed' : 'upcoming',
     apiStatus: reservation.status,
   };
 }

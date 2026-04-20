@@ -1,11 +1,14 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsBoolean,
   IsEnum,
   IsInt,
   IsObject,
   IsOptional,
+  IsArray,
   IsString,
+  IsUrl,
   MaxLength,
   Min,
   MinLength,
@@ -19,6 +22,14 @@ export class CreatePlacementVariantDto {
   @MinLength(2)
   @MaxLength(120)
   title!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUrl({
+    require_tld: false,
+  })
+  @MaxLength(1000)
+  photoUrl?: string;
 
   @IsEnum(PlacementVariantType)
   type!: PlacementVariantType;
@@ -83,4 +94,11 @@ export class CreateObjectDto {
   @ValidateNested()
   @Type(() => CreatePlacementVariantDto)
   initialVariant?: CreatePlacementVariantDto;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CreatePlacementVariantDto)
+  variants?: CreatePlacementVariantDto[];
 }

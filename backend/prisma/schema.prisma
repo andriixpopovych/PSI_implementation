@@ -76,6 +76,7 @@ model PlacementVariant {
   objectId      String
   object        AccommodationObject  @relation(fields: [objectId], references: [id], onDelete: Cascade)
   title         String
+  photoUrl      String?
   type          PlacementVariantType
   guests        Int
   bedrooms      Int

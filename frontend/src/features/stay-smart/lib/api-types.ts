@@ -14,6 +14,7 @@ export type SessionUser = {
 export type ApiVariant = {
   id: string;
   title: string;
+  photoUrl: string | null;
   type: PlacementVariantType;
   guests: number;
   bedrooms: number;
@@ -64,4 +65,10 @@ export type ApiReservation = {
     pricePerNight: number;
     pricePerMonth: number | null;
   } | null;
+};
+
+export type ApiLocationOption = {
+  city: string;
+  country: string;
+  label: string;
 };

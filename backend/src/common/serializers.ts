@@ -33,6 +33,7 @@ export function serializeObject(
       object.variants?.map((variant) => ({
         id: variant.id,
         title: variant.title,
+        photoUrl: variant.photoUrl,
         type: variant.type,
         guests: variant.guests,
         bedrooms: variant.bedrooms,

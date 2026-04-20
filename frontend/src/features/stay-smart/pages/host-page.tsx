@@ -7,8 +7,10 @@ import { useAuth } from '@/app/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+import { SmartImage } from '../components/smart-image';
 import { SectionHeading } from '../components/content-blocks';
 import { getMyListings } from '../lib/api';
+import { getDemoImageFallback } from '../lib/media';
 import { staySmartRoutes } from '../lib/routes';
 import { mapObjectToCardView, type PropertyCardView } from '../lib/view-models';
 
@@ -40,7 +42,7 @@ export function HostPage() {
     <>
       <SectionHeading
         title="Listed Properties"
-        copy="Host dashboard now reads your real backend listings and their approval statuses."
+        copy="Manage your listings, variants and current status."
         action={
           <Button onClick={() => navigate(staySmartRoutes.addListing)}>
             <HousePlus className="size-4" />
@@ -57,7 +59,12 @@ export function HostPage() {
             <Card className="overflow-hidden">
               <CardContent className="p-4">
                 <div className="relative overflow-hidden rounded-[1.5rem]">
-                  <img src={property.image} alt={property.title} className="aspect-[1.15/1] w-full object-cover" />
+                  <SmartImage
+                    src={property.image}
+                    alt={property.title}
+                    fallbackSrc={getDemoImageFallback(0)}
+                    className="aspect-[1.15/1] w-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <div className="absolute inset-x-5 bottom-5 text-white">
                     <p className="font-display text-3xl font-black tracking-[-0.05em]">{property.title}</p>
@@ -67,8 +74,17 @@ export function HostPage() {
                 </div>
 
                 <div className="mt-4 flex gap-3">
-                  <Button variant="secondary" className="flex-1" onClick={() => navigate(staySmartRoutes.property(property.id))}>
-                    Open
+                  <Button variant="secondary" className="flex-1" onClick={() => navigate(staySmartRoutes.manageObject(property.id))}>
+                    Manage Object
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => navigate(staySmartRoutes.manageVariants(property.id))}>
+                    Manage Variants
+                  </Button>
+                </div>
+
+                <div className="mt-3 flex gap-3">
+                  <Button variant="ghost" className="flex-1" onClick={() => navigate(staySmartRoutes.property(property.id))}>
+                    Open Listing
                   </Button>
                   <Button variant="ghost" className="flex-1" disabled>
                     {property.status}

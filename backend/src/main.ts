@@ -43,7 +43,10 @@ async function bootstrap() {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  await app.listen(Number(process.env.PORT ?? 3001));
+  await app.listen(Number(process.env.PORT ?? 3000));
 }
 
-void bootstrap();
+void bootstrap().catch((error) => {
+  console.error("Backend bootstrap failed:", error);
+  process.exit(1);
+});

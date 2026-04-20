@@ -63,7 +63,7 @@ export function ManagerPage() {
     <>
       <SectionHeading
         title="Manager Review"
-        copy="Pending host listings can be approved here for the public catalog."
+        copy="Review pending listings and update their status."
       />
 
       {message ? <p className="text-muted-foreground">{message}</p> : null}

@@ -16,11 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { ReservationCard, SectionHeading } from "../components/content-blocks";
-import {
-  cancelReservation,
-  getMyReservations,
-  searchObjects,
-} from "../lib/api";
+import { cancelReservation, getMyReservations, searchObjects } from "../lib/api";
 import { itemMotion } from "../lib/motion";
 import {
   mapObjectToCardView,
@@ -29,8 +25,14 @@ import {
   type ReservationCardView,
 } from "../lib/view-models";
 
-function getReservationTab(searchParams: URLSearchParams): "upcoming" | "past" {
-  return searchParams.get("tab") === "past" ? "past" : "upcoming";
+function getReservationTab(
+  searchParams: URLSearchParams,
+): "upcoming" | "completed" | "canceled" {
+  const value = searchParams.get("tab");
+  if (value === "completed" || value === "canceled") {
+    return value;
+  }
+  return "upcoming";
 }
 
 export function ReservationsPage() {
@@ -74,7 +76,7 @@ export function ReservationsPage() {
       });
   }, [user]);
 
-  const setActiveTab = (tab: "upcoming" | "past") => {
+  const setActiveTab = (tab: "upcoming" | "completed" | "canceled") => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set("tab", tab);
     setSearchParams(nextParams, { replace: true });
@@ -90,11 +92,11 @@ export function ReservationsPage() {
       setReservations((current) =>
         current.map((reservation) =>
           reservation.id === selectedReservationId
-            ? { ...reservation, status: "past", apiStatus: "CANCELED" }
+            ? { ...reservation, status: "canceled", apiStatus: "CANCELED" }
             : reservation,
         ),
       );
-      setMessage("Reservation canceled.");
+      setMessage("Reservation canceled and moved to canceled stays.");
       showToast({
         variant: "success",
         title: "Reservation canceled",
@@ -120,7 +122,7 @@ export function ReservationsPage() {
     <>
       <SectionHeading
         title="Reservations"
-        copy="Upcoming and past stays now come from the authenticated backend session."
+        copy="Keep track of upcoming, completed and canceled stays."
       />
 
       {message ? <p className="text-muted-foreground">{message}</p> : null}
@@ -128,12 +130,15 @@ export function ReservationsPage() {
       <motion.section variants={itemMotion}>
         <Tabs
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as "upcoming" | "past")}
+          onValueChange={(value) =>
+            setActiveTab(value as "upcoming" | "completed" | "canceled")
+          }
           className="w-full"
         >
           <TabsList>
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="past">Past</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+            <TabsTrigger value="canceled">Canceled</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming" className="space-y-5">
@@ -165,7 +170,7 @@ export function ReservationsPage() {
             })}
           </TabsContent>
 
-          <TabsContent value="past" className="space-y-5">
+          <TabsContent value="completed" className="space-y-5">
             {visibleReservations.map((reservation, index) => {
               const property =
                 properties.find((item) => item.id === reservation.propertyId) ??
@@ -190,6 +195,32 @@ export function ReservationsPage() {
               ) : null;
             })}
           </TabsContent>
+
+          <TabsContent value="canceled" className="space-y-5">
+            {visibleReservations.map((reservation, index) => {
+              const property =
+                properties.find((item) => item.id === reservation.propertyId) ??
+                properties[0];
+
+              return property ? (
+                <ReservationCard
+                  key={reservation.id}
+                  property={property}
+                  reservation={reservation}
+                  action={
+                    <Button
+                      variant="ghost"
+                      className="w-full lg:w-auto"
+                      disabled
+                    >
+                      Canceled
+                    </Button>
+                  }
+                  index={index}
+                />
+              ) : null;
+            })}
+          </TabsContent>
         </Tabs>
       </motion.section>
 
@@ -200,8 +231,7 @@ export function ReservationsPage() {
               Are you sure you want to cancel reservation?
             </DialogTitle>
             <DialogDescription>
-              This calls the backend cancel endpoint and moves the reservation
-              to the past tab.
+              This reservation will be moved to the canceled tab.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

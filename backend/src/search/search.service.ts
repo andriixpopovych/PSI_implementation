@@ -9,6 +9,29 @@ import { SearchQueryDto } from "./dto/search-query.dto";
 export class SearchService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  async getLocations() {
+    const locations = await this.prisma.accommodationObject.findMany({
+      where: {
+        status: ListingStatus.APPROVED,
+      },
+      select: {
+        city: true,
+        country: true,
+      },
+      distinct: ["city", "country"],
+      orderBy: [{ city: "asc" }, { country: "asc" }],
+    });
+
+    return {
+      count: locations.length,
+      data: locations.map((item) => ({
+        city: item.city,
+        country: item.country,
+        label: `${item.city}, ${item.country}`,
+      })),
+    };
+  }
+
   async search(filters: SearchQueryDto) {
     const city = filters.city?.trim() || undefined;
     const { type, minPrice, maxPrice, guests } = filters;

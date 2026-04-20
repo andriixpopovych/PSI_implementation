@@ -39,6 +39,9 @@ export function TopBar() {
   const hostActive = isHostPath(location.pathname);
   const managerActive = isManagerPath(location.pathname);
   const reservationsActive = isReservationsPath(location.pathname);
+  const isGuest = user?.role === "GUEST";
+  const isHost = user?.role === "HOST";
+  const isAdmin = user?.role === "ADMIN";
 
   const handleLoginAs = async (accountKey: keyof typeof demoAccounts) => {
     try {
@@ -122,14 +125,14 @@ export function TopBar() {
               <DropdownMenuLabel className="px-4 py-3">
                 <div className="flex flex-col gap-1">
                   <span className="font-display text-2xl font-black tracking-[-0.05em]">
-                    {user ? user.fullName : "Demo access"}
+                    {user ? user.fullName : "Account"}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {loading
-                      ? "Checking session..."
+                      ? "Checking account..."
                       : user
                         ? `${user.role.toLowerCase()} account active`
-                        : "Sign in with seeded demo accounts."}
+                        : "Choose an account to continue."}
                   </span>
                 </div>
               </DropdownMenuLabel>
@@ -164,53 +167,57 @@ export function TopBar() {
                 </>
               ) : (
                 <>
-                  <DropdownMenuItem
-                    className={cn(
-                      "rounded-3xl border border-transparent px-4 py-4 focus:bg-accent/8",
-                      hostActive && "border-accent/15 bg-accent/6",
-                    )}
-                    onSelect={() => navigate(staySmartRoutes.host)}
-                  >
-                    <div className="flex flex-1 items-center gap-3">
-                      <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                        <HousePlus className="size-5" />
+                  {isHost ? (
+                    <DropdownMenuItem
+                      className={cn(
+                        "rounded-3xl border border-transparent px-4 py-4 focus:bg-accent/8",
+                        hostActive && "border-accent/15 bg-accent/6",
+                      )}
+                      onSelect={() => navigate(staySmartRoutes.host)}
+                    >
+                      <div className="flex flex-1 items-center gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                          <HousePlus className="size-5" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-foreground">
+                            Host
+                          </span>
+                          <span className="text-xs leading-5 text-muted-foreground">
+                            Listings and add new
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-foreground">
-                          Host
-                        </span>
-                        <span className="text-xs leading-5 text-muted-foreground">
-                          Listings and add new
-                        </span>
-                      </div>
-                    </div>
-                    <DropdownMenuShortcut>Open</DropdownMenuShortcut>
-                  </DropdownMenuItem>
+                      <DropdownMenuShortcut>Open</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  ) : null}
 
-                  <DropdownMenuItem
-                    className={cn(
-                      "mt-2 rounded-3xl border border-transparent px-4 py-4 focus:bg-accent/8",
-                      reservationsActive && "border-accent/15 bg-accent/6",
-                    )}
-                    onSelect={() => navigate(staySmartRoutes.reservations)}
-                  >
-                    <div className="flex flex-1 items-center gap-3">
-                      <div className="flex size-11 items-center justify-center rounded-2xl bg-accent/12 text-accent">
-                        <CalendarDays className="size-5" />
+                  {isGuest ? (
+                    <DropdownMenuItem
+                      className={cn(
+                        "mt-2 rounded-3xl border border-transparent px-4 py-4 focus:bg-accent/8",
+                        reservationsActive && "border-accent/15 bg-accent/6",
+                      )}
+                      onSelect={() => navigate(staySmartRoutes.reservations)}
+                    >
+                      <div className="flex flex-1 items-center gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-2xl bg-accent/12 text-accent">
+                          <CalendarDays className="size-5" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-foreground">
+                            Reservations
+                          </span>
+                          <span className="text-xs leading-5 text-muted-foreground">
+                            Upcoming and past stays
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-foreground">
-                          Reservations
-                        </span>
-                        <span className="text-xs leading-5 text-muted-foreground">
-                          Upcoming and past stays
-                        </span>
-                      </div>
-                    </div>
-                    <DropdownMenuShortcut>Open</DropdownMenuShortcut>
-                  </DropdownMenuItem>
+                      <DropdownMenuShortcut>Open</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  ) : null}
 
-                  {user.role === "ADMIN" ? (
+                  {isAdmin ? (
                     <DropdownMenuItem
                       className={cn(
                         "mt-2 rounded-3xl border border-transparent px-4 py-4 focus:bg-accent/8",
@@ -227,7 +234,7 @@ export function TopBar() {
                             Manager review
                           </span>
                           <span className="text-xs leading-5 text-muted-foreground">
-                            Approve pending listings
+                            Review pending listings
                           </span>
                         </div>
                       </div>
@@ -250,7 +257,7 @@ export function TopBar() {
                           Logout
                         </span>
                         <span className="text-xs leading-5 text-muted-foreground">
-                          Clear demo session
+                          Sign out
                         </span>
                       </div>
                     </div>

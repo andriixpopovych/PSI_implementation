@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
+import { getDemoImageFallback } from '../lib/media';
 import { itemMotion } from '../lib/motion';
 import type { PropertyCardView, ReservationCardView } from '../lib/view-models';
+import { SmartImage } from './smart-image';
 
 export function SectionHeading({
   title,
@@ -78,7 +80,12 @@ export function PropertyCard({
       <Card className="h-full overflow-hidden">
         <Link to={to} className="block w-full cursor-pointer text-left">
           <div className="relative overflow-hidden">
-            <img src={property.image} alt={property.title} className="aspect-[1.08/1] w-full object-cover" />
+            <SmartImage
+              src={property.image}
+              alt={property.title}
+              fallbackSrc={getDemoImageFallback(index)}
+              className="aspect-[1.08/1] w-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
             <div className="absolute inset-x-5 top-5 flex items-start justify-between gap-3">
               <Badge variant="outline">{property.badge}</Badge>
@@ -127,7 +134,12 @@ export function ResultCard({
       <Card className="overflow-hidden">
         <Link to={to} className="block w-full cursor-pointer text-left">
           <div className="relative overflow-hidden">
-            <img src={property.image} alt={property.title} className="aspect-[1.38/1] w-full object-cover" />
+            <SmartImage
+              src={property.image}
+              alt={property.title}
+              fallbackSrc={getDemoImageFallback(index)}
+              className="aspect-[1.38/1] w-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/10 to-transparent" />
             <div className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md">
               <Heart className="size-4" />
@@ -188,7 +200,12 @@ export function ReservationCard({
       <Card className="overflow-hidden rounded-[1.8rem]">
         <CardContent className="grid gap-5 p-4 lg:grid-cols-[190px_1fr_auto] lg:items-center">
           <div className="overflow-hidden rounded-[1.3rem]">
-            <img src={property.image} alt={property.title} className="aspect-[1.2/1] w-full object-cover" />
+            <SmartImage
+              src={property.image}
+              alt={property.title}
+              fallbackSrc={getDemoImageFallback(index)}
+              className="aspect-[1.2/1] w-full object-cover"
+            />
           </div>
 
           <div className="space-y-3">
@@ -198,6 +215,9 @@ export function ReservationCard({
             <div className="flex flex-wrap gap-4 text-sm leading-6 text-muted-foreground">
               <span>
                 <strong className="text-foreground">Check In:</strong> {reservation.checkIn}
+              </span>
+              <span>
+                <strong className="text-foreground">Check Out:</strong> {reservation.checkOut}
               </span>
               <span>
                 <strong className="text-foreground">Duration:</strong> {reservation.duration}

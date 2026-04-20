@@ -75,14 +75,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
 
-      <div className="pointer-events-none fixed right-4 top-4 z-120 flex w-[min(92vw,380px)] flex-col gap-3 sm:right-6 sm:top-6">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-120 flex w-[min(92vw,380px)] flex-col gap-3 sm:bottom-6 sm:right-6">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.18 }}
               className={cn(
                 "pointer-events-auto rounded-2xl border bg-white/95 p-4 shadow-[0_12px_28px_rgba(0,0,0,0.12)] backdrop-blur",
